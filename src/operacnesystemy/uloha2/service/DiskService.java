@@ -10,8 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Locale;
-import java.util.Scanner;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static operacnesystemy.uloha2.Commands.EXIT;
@@ -32,6 +31,8 @@ public class DiskService {
             display_disk - show disk contents on the screen
             display_file - show file contents on the screen
             write - write a new file to disk
+            delete - delete a file from disk
+            grep - enter filename and sought word to print line
             manual - this manual :
             exit - exit""";
 
@@ -73,6 +74,8 @@ public class DiskService {
                     case DISPLAY_DISK -> displayDisk().run();
                     case DISPLAY_FILE -> displayFile().run();
                     case WRITE -> writeFile().run();
+                    case DELETE -> deleteFile().run();
+                    case GREP -> grepFile().run();
                     case MANUAL -> System.out.println(MANUAL_TEXT);
                 }
             } catch (RuntimeException e) {
@@ -86,6 +89,55 @@ public class DiskService {
             }
 
         } while (command != EXIT);
+    }
+
+    private Runnable grepFile() {
+
+        return () -> {
+            System.out.println("Filename and word: ");
+            String command = new Scanner(System.in).nextLine();
+            String fileName = command.split(" ")[0];
+            String soughtWord = command.split(" ")[1];
+            List<String> rows = new ArrayList<>();
+
+            Integer blockNumber = indexNodeService.findIndexNode(fileName, disk);
+            if (blockNumber + 1 < blocksCount) {
+                rows.addAll(
+                        Arrays.stream(disk.getDisk()
+                                        .get(blockNumber + 1)
+                                        .split("\n"))
+                                .filter(row -> row.contains(soughtWord))
+                                .collect(Collectors.toList()));
+            }
+            if (blockNumber + 1 < blocksCount) {
+                rows.addAll(
+                        Arrays.stream(disk.getDisk()
+                                        .get(blockNumber + 2)
+                                        .split("\n"))
+                                .filter(row -> row.contains(soughtWord))
+                                .collect(Collectors.toList()));
+            }
+
+            rows.forEach(System.out::println);
+        };
+    }
+
+    private Runnable deleteFile() {
+
+        return () -> {
+            System.out.println("Filename: ");
+            Scanner sc = new Scanner(System.in);
+
+            Integer blockNumber = indexNodeService.findIndexNode(sc.next(), disk);
+            disk.getDisk().set(blockNumber, "f" + "-".repeat(blockSize - 1));
+
+            if (blockNumber + 1 < blocksCount) {
+                disk.getDisk().set(blockNumber + 1, "f" + "-".repeat(blockSize - 1));
+            }
+            if (blockNumber + 2 < blocksCount) {
+                disk.getDisk().set(blockNumber + 2, "f" + "-".repeat(blockSize - 1));
+            }
+        };
     }
 
     private Runnable writeFile() {
@@ -122,10 +174,27 @@ public class DiskService {
     }
 
     private String createFileContent() {
-        String content = new Scanner(System.in).next().split("-")[0];
+
+        String content = setFileContent().split("-")[0];
+
         while (content.length() < blockSize * 2) {
             content = content.concat("-");
         }
+        return content;
+    }
+
+    private String setFileContent() {
+        String content = "";
+        try {
+            char character;
+            do {
+                character = (char) System.in.read();
+                content = content.concat(Character.toString(character));
+            } while (character != '-');
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        new Scanner(System.in).nextLine();
         return content;
     }
 

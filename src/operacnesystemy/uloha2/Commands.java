@@ -7,5 +7,7 @@ public enum Commands {
     DISPLAY_FILE,
     WRITE,
     MANUAL,
-    EXIT
+    DELETE,
+    GREP,
+    EXIT;
 }

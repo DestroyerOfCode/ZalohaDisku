@@ -18,7 +18,7 @@ public class IndexNodeService {
                 return i;
             }
         }
-        return i;
+        throw new RuntimeException("File not found");
     }
 
     public int find_free_block(int from_index, Disk disk) {
@@ -29,7 +29,7 @@ public class IndexNodeService {
             }
         }
 
-        return j;
+        throw new RuntimeException("Free block not found");
     }
 
     public void setDataBlocksInNodes(IndexNode indexNode, String content, int dataBlock1, int dataBlock2) {
