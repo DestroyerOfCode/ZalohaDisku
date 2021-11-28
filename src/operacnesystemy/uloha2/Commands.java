@@ -10,5 +10,6 @@ public enum Commands {
     DELETE,
     GREP,
     DELETE_MODE,
+    FILE_SIZE,
     EXIT;
 }

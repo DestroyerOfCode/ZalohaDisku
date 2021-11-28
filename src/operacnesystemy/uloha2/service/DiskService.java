@@ -6,6 +6,7 @@ import operacnesystemy.uloha2.data.BlockType;
 import operacnesystemy.uloha2.data.Disk;
 import operacnesystemy.uloha2.data.IndexNode;
 
+import java.awt.*;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -14,6 +15,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import static operacnesystemy.uloha2.Commands.EXIT;
@@ -38,6 +40,7 @@ public class DiskService {
             delete - delete a file from disk
             grep - enter filename and sought word to print line
             delete_mode - make file deletable or not
+            file_size -> get size of file
             manual - this manual :
             exit - exit""";
 
@@ -87,6 +90,7 @@ public class DiskService {
                     case DELETE -> deleteFile().run();
                     case GREP -> grepFile().run();
                     case DELETE_MODE -> makeDeletable().run();
+                    case FILE_SIZE -> getFileSize().run();
                     case MANUAL -> System.out.println(MANUAL_TEXT);
                 }
             } catch (RuntimeException e) {
@@ -100,6 +104,36 @@ public class DiskService {
             }
 
         } while (command != EXIT);
+    }
+
+    private Runnable getFileSize() {
+
+        return () -> {
+            System.out.println("Filename: ");
+            String filename = new Scanner(System.in).next();
+            Integer indexNodeBlockNumber = indexNodeService.findIndexNodeBlockNumber(filename, disk);
+            Integer sum = 0;
+            if (indexNodeBlockNumber + 1 < blocksCount) {
+                sum += disk.getBlocks().get(indexNodeBlockNumber + 1)
+                        .getContent()
+                        .substring(0,
+                                disk.getBlocks().get(indexNodeBlockNumber + 1).getContent().indexOf('-') != -1 ?
+                                        disk.getBlocks().get(indexNodeBlockNumber + 1).getContent().indexOf('-') :
+                                        blockSize)
+                        .length();
+            }
+
+            if (indexNodeBlockNumber + 2 < blocksCount) {
+                sum += disk.getBlocks().get(indexNodeBlockNumber + 2)
+                        .getContent()
+                        .substring(0,
+                                disk.getBlocks().get(indexNodeBlockNumber + 2).getContent().indexOf('-') != -1 ?
+                                        disk.getBlocks().get(indexNodeBlockNumber + 2).getContent().indexOf('-') :
+                                        blockSize)
+                        .length();
+            }
+            System.out.println(sum);
+        };
     }
 
     private Runnable makeDeletable() {
