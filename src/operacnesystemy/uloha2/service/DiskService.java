@@ -1,7 +1,6 @@
 package operacnesystemy.uloha2.service;
 
 import operacnesystemy.uloha2.Commands;
-import operacnesystemy.uloha2.data.DataBlock;
 import operacnesystemy.uloha2.data.Disk;
 import operacnesystemy.uloha2.data.IndexNode;
 
@@ -11,7 +10,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.Locale;
 import java.util.Scanner;
 import java.util.stream.Collectors;
@@ -20,8 +18,6 @@ import static operacnesystemy.uloha2.Commands.EXIT;
 import static operacnesystemy.uloha2.Commands.MANUAL;
 
 public class DiskService {
-
-    private static final int NUMBER_OF_SPACES = 2;
 
     public DiskService(Disk disk, IndexNodeService indexNodeService) {
         this.disk = disk;
@@ -61,7 +57,9 @@ public class DiskService {
         Path path = Paths.get("src/operacnesystemy/uloha2/resources/uloha2-zaloha_disku.txt");
         String read = Files.readAllLines(path).get(0);
         for (int i = 0; i < blocksCount; ++i) {
-            disk.getDisk().add(i, read.substring(i * blockSize, (i * blockSize) + blockSize));
+            int blockStart = i * blockSize;
+            int blockEnd = (i * blockSize) + blockSize;
+            disk.getDisk().add(i, read.substring(blockStart, blockEnd));
         }
         return read;
     }
@@ -93,64 +91,42 @@ public class DiskService {
     private Runnable writeFile() {
 
         return () -> {
-            System.out.println("Filename: ");
+            System.out.println("Enter Filename: ");
 
             IndexNode indexNode = new IndexNode();
             indexNode.setFilename(new Scanner(System.in).nextLine());
 
-            String content = createContent();
-            indexNode.setBlockNumber(find_free_block(0));
+            String fileContent = createFileContent();
+            indexNode.setBlockNumber(indexNodeService.find_free_block(0, disk));
+
             if (indexNode.getBlockNumber() >= blocksCount) {
                 throw new RuntimeException("Disk is full");
             }
 
-            int dataBlock1 = find_free_block(indexNode.getBlockNumber() + 1);
-            int dataBlock2 = find_free_block(dataBlock1 + 1);
+            int dataBlock1 = indexNodeService.find_free_block(indexNode.getBlockNumber() + 1, disk);
+            int dataBlock2 = indexNodeService.find_free_block(dataBlock1 + 1, disk);
 
-            indexNode.setBlock("i");
-            for (int i = 1; i < blockSize; ++i) {
-                indexNode.setBlock(indexNode.getBlock() + "-");
-            }
-            indexNode.setBlock("i" + indexNode.getFilename() + " " + dataBlock1 + " " + dataBlock2 +
-                    getDashCount(indexNode, dataBlock1, dataBlock2));
+            indexNodeService.setDataBlocksInNodes(indexNode, fileContent, dataBlock1, dataBlock2);
 
-            indexNode.setFirstDirect(new DataBlock("d" + content.substring(0, Math.min(content.length(), blockSize))));
-            if (content.length() > 32) {
-                indexNode.setSecondIndirect(new DataBlock("d" + content.substring(blockSize, Math.min(content.length(), blockSize * 2))));
-            }
-
-            disk.getDisk().set(indexNode.getBlockNumber(), indexNode.getBlock());
-            disk.getDisk().set(dataBlock1, indexNode.getFirstDirect().getData());
-
-            if (dataBlock2 < blocksCount) {
-                disk.getDisk().set(dataBlock2, indexNode.getSecondIndirect().getData());
-            }
+            fillDiskWithNewBlocks(indexNode, dataBlock1, dataBlock2);
         };
     }
 
-    private String getDashCount(IndexNode indexNode, int dataBlock1, int dataBlock2) {
-        return indexNode.getBlock().substring(indexNode.getFilename().length() + Integer.toString(dataBlock1).length() +
-                Integer.toString(dataBlock2).length() + NUMBER_OF_SPACES);
+    private void fillDiskWithNewBlocks(IndexNode indexNode, int dataBlock1, int dataBlock2) {
+        disk.getDisk().set(indexNode.getBlockNumber(), indexNode.getBlock());
+        disk.getDisk().set(dataBlock1, indexNode.getFirstDirect().getData());
+
+        if (dataBlock2 < blocksCount) {
+            disk.getDisk().set(dataBlock2, indexNode.getSecondIndirect().getData());
+        }
     }
 
-    private String createContent() {
-        StringBuilder content = new StringBuilder(new Scanner(System.in).next());
-        content = new StringBuilder(content.substring(0, content.indexOf("-")));
+    private String createFileContent() {
+        String content = new Scanner(System.in).next().split("-")[0];
         while (content.length() < blockSize * 2) {
-            content.append("-");
+            content = content.concat("-");
         }
-        return new String(content);
-    }
-
-    private int find_free_block(int from_index) {
-        int j;
-        for (j = from_index; j < blocksCount; j++) {
-            if (disk.getDisk().get(j).charAt(0) == 'f') {
-                return j;
-            }
-        }
-
-        return j;
+        return content;
     }
 
     private Runnable displayFile() {
@@ -187,10 +163,14 @@ public class DiskService {
 
     private void printBlock(int blockNumber) {
         System.out.println(disk.getDisk().get(blockNumber)
-                .substring(1, disk.getDisk().get(blockNumber).indexOf('-') == -1 ?
-                        disk.getDisk().get(blockNumber).length() :
-                        disk.getDisk().get(blockNumber).indexOf('-'))
+                .substring(1, getLastCharacterOfBlockOrDash(blockNumber))
         );
+    }
+
+    private int getLastCharacterOfBlockOrDash(int blockNumber) {
+        return disk.getDisk().get(blockNumber).indexOf('-') == -1 ?
+                disk.getDisk().get(blockNumber).length() :
+                disk.getDisk().get(blockNumber).indexOf('-');
     }
 
     private Runnable format() {
