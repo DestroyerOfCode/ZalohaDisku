@@ -63,9 +63,14 @@ public class DiskService {
         Path path = Paths.get("src/operacnesystemy/uloha2/resources/uloha2-zaloha_disku.txt");
         String read = Files.readAllLines(path).get(0);
         for (int i = 0; i < blocksCount; ++i) {
-            int blockStart = i * blockSize;
+            int blockStart = i * blockSize + 1;
             int blockEnd = (i * blockSize) + blockSize;
-            disk.getBlocks().add(i, new Block(valueKeyMap.get(Character.toString(read.charAt(blockStart))), read.substring(blockStart, blockEnd)));
+            disk.getBlocks().add(i,
+                    new Block(valueKeyMap
+                            .get(
+                                    Character.toString(read.charAt(blockStart))),
+                            read.substring(blockStart, blockEnd) + "-")
+            );
         }
         return read;
     }
@@ -99,9 +104,18 @@ public class DiskService {
 
     private Runnable makeDeletable() {
         return () -> {
+            System.out.println("Filename: ");
             String fileName = new Scanner(System.in).next();
-            Integer blockNumber = indexNodeService.findIndexNode(fileName, disk);
+            Integer blockNumber = indexNodeService.findIndexNodeBlockNumber(fileName, disk);
+            disk.getBlocks().get(blockNumber).setDeletable(false);
 
+            if (blockNumber + 1 < blocksCount) {
+                disk.getBlocks().get(blockNumber + 1).setDeletable(false);
+            }
+
+            if (blockNumber + 2 < blocksCount) {
+                disk.getBlocks().get(blockNumber + 2).setDeletable(false);
+            }
         };
     }
 
@@ -114,7 +128,7 @@ public class DiskService {
             String soughtWord = command.split(" ")[1];
             List<String> rows = new ArrayList<>();
 
-            Integer blockNumber = indexNodeService.findIndexNode(fileName, disk);
+            Integer blockNumber = indexNodeService.findIndexNodeBlockNumber(fileName, disk);
             if (blockNumber + 1 < blocksCount) {
                 rows.addAll(
                         Arrays.stream(disk.getBlocks()
@@ -144,7 +158,12 @@ public class DiskService {
             System.out.println("Filename: ");
             Scanner sc = new Scanner(System.in);
 
-            Integer blockNumber = indexNodeService.findIndexNode(sc.next(), disk);
+            Integer blockNumber = indexNodeService.findIndexNodeBlockNumber(sc.next(), disk);
+            if (!disk.getBlocks().get(blockNumber).getDeletable()) {
+                System.out.println("File cannot be deleted!");
+                return;
+            }
+
             disk.getBlocks().set(blockNumber, new Block(BlockType.FREE, "-".repeat(blockSize - 1)));
 
             if (blockNumber + 1 < blocksCount) {
@@ -241,7 +260,7 @@ public class DiskService {
         Scanner sc = new Scanner(System.in);
 
         iNode.setFilename(sc.nextLine());
-        iNode.setBlockNumber(indexNodeService.findIndexNode(iNode.getFilename(), disk));
+        iNode.setBlockNumber(indexNodeService.findIndexNodeBlockNumber(iNode.getFilename(), disk));
         iNode.setBlock(disk.getBlocks().get((iNode.getBlockNumber())).getContent());
 
         return iNode;

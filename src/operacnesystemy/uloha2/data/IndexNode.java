@@ -10,15 +10,6 @@ public class IndexNode {
     DataBlock firstDirect;
     DataBlock secondIndirect;
     LocalDateTime time;
-    boolean deletable;
-
-    public boolean isDeletable() {
-        return deletable;
-    }
-
-    public void setDeletable(boolean deletable) {
-        this.deletable = deletable;
-    }
 
     public Integer getBlockNumber() {
         return blockNumber;

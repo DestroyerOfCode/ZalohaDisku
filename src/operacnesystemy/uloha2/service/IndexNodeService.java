@@ -12,10 +12,10 @@ public class IndexNodeService {
 
     private static final int NUMBER_OF_SPACES = 2;
 
-    public Integer findIndexNode(String filename, Disk disk) {
+    public Integer findIndexNodeBlockNumber(String filename, Disk disk) {
         int i;
         for (i = 0; i < blocksCount; ++i) {
-            if (disk.getBlocks().get(i).getContent().startsWith(filename, 1)) {
+            if (disk.getBlocks().get(i).getContent().startsWith(filename, 0)) {
                 return i;
             }
         }
