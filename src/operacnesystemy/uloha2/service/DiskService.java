@@ -1,6 +1,8 @@
 package operacnesystemy.uloha2.service;
 
 import operacnesystemy.uloha2.Commands;
+import operacnesystemy.uloha2.data.Block;
+import operacnesystemy.uloha2.data.BlockType;
 import operacnesystemy.uloha2.data.Disk;
 import operacnesystemy.uloha2.data.IndexNode;
 
@@ -10,11 +12,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import static operacnesystemy.uloha2.Commands.EXIT;
 import static operacnesystemy.uloha2.Commands.MANUAL;
+import static operacnesystemy.uloha2.data.BlockType.valueKeyMap;
 
 public class DiskService {
 
@@ -33,6 +37,7 @@ public class DiskService {
             write - write a new file to disk
             delete - delete a file from disk
             grep - enter filename and sought word to print line
+            delete_mode - make file deletable or not
             manual - this manual :
             exit - exit""";
 
@@ -60,7 +65,7 @@ public class DiskService {
         for (int i = 0; i < blocksCount; ++i) {
             int blockStart = i * blockSize;
             int blockEnd = (i * blockSize) + blockSize;
-            disk.getDisk().add(i, read.substring(blockStart, blockEnd));
+            disk.getBlocks().add(i, new Block(valueKeyMap.get(Character.toString(read.charAt(blockStart))), read.substring(blockStart, blockEnd)));
         }
         return read;
     }
@@ -76,6 +81,7 @@ public class DiskService {
                     case WRITE -> writeFile().run();
                     case DELETE -> deleteFile().run();
                     case GREP -> grepFile().run();
+                    case DELETE_MODE -> makeDeletable().run();
                     case MANUAL -> System.out.println(MANUAL_TEXT);
                 }
             } catch (RuntimeException e) {
@@ -91,6 +97,14 @@ public class DiskService {
         } while (command != EXIT);
     }
 
+    private Runnable makeDeletable() {
+        return () -> {
+            String fileName = new Scanner(System.in).next();
+            Integer blockNumber = indexNodeService.findIndexNode(fileName, disk);
+
+        };
+    }
+
     private Runnable grepFile() {
 
         return () -> {
@@ -103,16 +117,18 @@ public class DiskService {
             Integer blockNumber = indexNodeService.findIndexNode(fileName, disk);
             if (blockNumber + 1 < blocksCount) {
                 rows.addAll(
-                        Arrays.stream(disk.getDisk()
+                        Arrays.stream(disk.getBlocks()
                                         .get(blockNumber + 1)
+                                        .getContent()
                                         .split("\n"))
                                 .filter(row -> row.contains(soughtWord))
                                 .collect(Collectors.toList()));
             }
             if (blockNumber + 1 < blocksCount) {
                 rows.addAll(
-                        Arrays.stream(disk.getDisk()
+                        Arrays.stream(disk.getBlocks()
                                         .get(blockNumber + 2)
+                                        .getContent()
                                         .split("\n"))
                                 .filter(row -> row.contains(soughtWord))
                                 .collect(Collectors.toList()));
@@ -129,13 +145,13 @@ public class DiskService {
             Scanner sc = new Scanner(System.in);
 
             Integer blockNumber = indexNodeService.findIndexNode(sc.next(), disk);
-            disk.getDisk().set(blockNumber, "f" + "-".repeat(blockSize - 1));
+            disk.getBlocks().set(blockNumber, new Block(BlockType.FREE, "-".repeat(blockSize - 1)));
 
             if (blockNumber + 1 < blocksCount) {
-                disk.getDisk().set(blockNumber + 1, "f" + "-".repeat(blockSize - 1));
+                disk.getBlocks().set(blockNumber + 1, new Block(BlockType.FREE, "-".repeat(blockSize - 1)));
             }
             if (blockNumber + 2 < blocksCount) {
-                disk.getDisk().set(blockNumber + 2, "f" + "-".repeat(blockSize - 1));
+                disk.getBlocks().set(blockNumber + 2, new Block(BlockType.FREE, "-".repeat(blockSize - 1)));
             }
         };
     }
@@ -150,6 +166,7 @@ public class DiskService {
 
             String fileContent = createFileContent();
             indexNode.setBlockNumber(indexNodeService.find_free_block(0, disk));
+            indexNode.setTime(LocalDateTime.now());
 
             if (indexNode.getBlockNumber() >= blocksCount) {
                 throw new RuntimeException("Disk is full");
@@ -165,11 +182,11 @@ public class DiskService {
     }
 
     private void fillDiskWithNewBlocks(IndexNode indexNode, int dataBlock1, int dataBlock2) {
-        disk.getDisk().set(indexNode.getBlockNumber(), indexNode.getBlock());
-        disk.getDisk().set(dataBlock1, indexNode.getFirstDirect().getData());
+        disk.getBlocks().set(indexNode.getBlockNumber(), new Block(BlockType.INODE, indexNode.getBlock()));
+        disk.getBlocks().set(dataBlock1, new Block(BlockType.DATA, indexNode.getFirstDirect().getData()));
 
         if (dataBlock2 < blocksCount) {
-            disk.getDisk().set(dataBlock2, indexNode.getSecondIndirect().getData());
+            disk.getBlocks().set(dataBlock2, new Block(BlockType.DATA, indexNode.getSecondIndirect().getData()));
         }
     }
 
@@ -225,38 +242,41 @@ public class DiskService {
 
         iNode.setFilename(sc.nextLine());
         iNode.setBlockNumber(indexNodeService.findIndexNode(iNode.getFilename(), disk));
-        iNode.setBlock(disk.getDisk().get((iNode.getBlockNumber())));
+        iNode.setBlock(disk.getBlocks().get((iNode.getBlockNumber())).getContent());
 
         return iNode;
     }
 
     private void printBlock(int blockNumber) {
-        System.out.println(disk.getDisk().get(blockNumber)
+        System.out.println(disk.getBlocks().get(blockNumber).getContent()
                 .substring(1, getLastCharacterOfBlockOrDash(blockNumber))
         );
     }
 
     private int getLastCharacterOfBlockOrDash(int blockNumber) {
-        return disk.getDisk().get(blockNumber).indexOf('-') == -1 ?
-                disk.getDisk().get(blockNumber).length() :
-                disk.getDisk().get(blockNumber).indexOf('-');
+        return disk.getBlocks().get(blockNumber).getContent().indexOf('-') == -1 ?
+                disk.getBlocks().get(blockNumber).getContent().length() :
+                disk.getBlocks().get(blockNumber).getContent().indexOf('-');
     }
 
     private Runnable format() {
 
         return () -> {
-            String newBlock = "f" + "-".repeat(blockSize - 1);
-            disk.setDisk(disk.getDisk().stream().map((String block) -> newBlock).collect(Collectors.toList()));
+            disk.setBlocks(disk.getBlocks().stream().map((Block block) -> {
+                block.setContent("-".repeat(blockSize - 1));
+                block.setType(BlockType.FREE);
+                return block;
+            }).collect(Collectors.toList()));
         };
     }
 
     private Runnable displayDisk() {
         return () -> {
-            for (int i = 0; i < disk.getDisk().size(); i++) {
+            for (int i = 0; i < disk.getBlocks().size(); i++) {
                 System.out.printf("""
                         block %d
                         [%s]
-                        """, i, disk.getDisk().get(i));
+                        """, i, disk.getBlocks().get(i).getContent());
             }
         };
     }

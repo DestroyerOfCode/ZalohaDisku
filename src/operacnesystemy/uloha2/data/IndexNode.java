@@ -1,5 +1,7 @@
 package operacnesystemy.uloha2.data;
 
+import java.time.LocalDateTime;
+
 public class IndexNode {
 
     String filename;
@@ -7,7 +9,16 @@ public class IndexNode {
     Integer blockNumber;
     DataBlock firstDirect;
     DataBlock secondIndirect;
-    Integer time;
+    LocalDateTime time;
+    boolean deletable;
+
+    public boolean isDeletable() {
+        return deletable;
+    }
+
+    public void setDeletable(boolean deletable) {
+        this.deletable = deletable;
+    }
 
     public Integer getBlockNumber() {
         return blockNumber;
@@ -49,11 +60,11 @@ public class IndexNode {
         this.secondIndirect = secondIndirect;
     }
 
-    public Integer getTime() {
+    public LocalDateTime getTime() {
         return time;
     }
 
-    public void setTime(Integer time) {
+    public void setTime(LocalDateTime time) {
         this.time = time;
     }
 }

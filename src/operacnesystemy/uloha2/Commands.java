@@ -9,5 +9,6 @@ public enum Commands {
     MANUAL,
     DELETE,
     GREP,
+    DELETE_MODE,
     EXIT;
 }

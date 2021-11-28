@@ -1,5 +1,6 @@
 package operacnesystemy.uloha2.service;
 
+import operacnesystemy.uloha2.data.BlockType;
 import operacnesystemy.uloha2.data.DataBlock;
 import operacnesystemy.uloha2.data.Disk;
 import operacnesystemy.uloha2.data.IndexNode;
@@ -14,7 +15,7 @@ public class IndexNodeService {
     public Integer findIndexNode(String filename, Disk disk) {
         int i;
         for (i = 0; i < blocksCount; ++i) {
-            if (disk.getDisk().get(i).startsWith(filename, 1)) {
+            if (disk.getBlocks().get(i).getContent().startsWith(filename, 1)) {
                 return i;
             }
         }
@@ -24,7 +25,7 @@ public class IndexNodeService {
     public int find_free_block(int from_index, Disk disk) {
         int j;
         for (j = from_index; j < blocksCount; j++) {
-            if (disk.getDisk().get(j).charAt(0) == 'f') {
+            if (disk.getBlocks().get(j).getType() == BlockType.FREE) {
                 return j;
             }
         }

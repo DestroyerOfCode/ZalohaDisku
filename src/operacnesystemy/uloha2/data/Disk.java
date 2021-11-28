@@ -4,17 +4,17 @@ import java.util.List;
 
 public class Disk {
 
-    private List<String> disk;
+    private List<Block> blocks;
 
-    public Disk(List<String> disk) {
-        this.disk = disk;
+    public Disk(List<Block> blocks) {
+        this.blocks = blocks;
     }
 
-    public List<String> getDisk() {
-        return disk;
+    public List<Block> getBlocks() {
+        return blocks;
     }
 
-    public void setDisk(List<String> disk) {
-        this.disk = disk;
+    public void setBlocks(List<Block> blocks) {
+        this.blocks = blocks;
     }
 }
